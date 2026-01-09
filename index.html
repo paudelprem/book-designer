@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+<meta charset="UTF-8">
+<title>note.me – Online Book Editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Quill Editor CDN -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+header{
+  background:#1e40af;
+  color:#fff;
+  padding:10px;
+  display:flex;
+  align-items:center;
+}
+header input{
+  margin-left:10px;
+  padding:6px;
+  font-size:16px;
+  width:100%;
+}
+main{
+  flex:1;
+  display:flex;
+}
+#chapters{
+  width:250px;
+  background:#f3f4f6;
+  padding:10px;
+  overflow-y:auto;
+}
+button{
+  width:100%;
+  padding:6px;
+  margin-bottom:8px;
+}
+.chapter{
+  background:#fff;
+  padding:8px;
+  margin-bottom:5px;
+  border-radius:4px;
+  cursor:pointer;
+}
+.chapter.active{
+  background:#dbeafe;
+}
+.chapter span{
+  float:right;
+  color:red;
+  cursor:pointer;
+}
+#editor{
+  flex:1;
+}
+footer{
+  font-size:12px;
+  text-align:center;
+  padding:5px;
+  background:#e5e7eb;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  📘
+  <input id="bookTitle" placeholder="बुकको शीर्षक लेख्नुहोस्">
+</header>
+
+<main>
+  <div id="chapters">
+    <button onclick="addChapter()">+ नयाँ अध्याय</button>
+    <div id="chapterList"></div>
+  </div>
+  <div id="editor"></div>
+</main>
+
+<footer>✔ Auto Saved (Browser)</footer>
+
+<script src="https://cdn.quilljs.com/1.3.7/quill.js"></script>
+<script>
+const quill = new Quill('#editor',{ theme:'snow' });
+
+let book = JSON.parse(localStorage.getItem('book')) || {
+  title:'',
+  chapters:[],
+  current:null
+};
+
+document.getElementById('bookTitle').value = book.title;
+document.getElementById('bookTitle').oninput = e=>{
+  book.title = e.target.value;
+  save();
+};
+
+function save(){
+  localStorage.setItem('book', JSON.stringify(book));
+}
+
+function addChapter(){
+  const t = prompt("अध्याय शीर्षक:");
+  if(!t) return;
+  const c = { id:Date.now(), title:t, content:'' };
+  book.chapters.push(c);
+  book.current = c.id;
+  save();
+  render();
+  load(c.id);
+}
+
+function deleteChapter(id){
+  if(!confirm("हटाउने?")) return;
+  book.chapters = book.chapters.filter(c=>c.id!==id);
+  if(book.current===id){
+    book.current=null;
+    quill.setText('');
+  }
+  save();
+  render();
+}
+
+function render(){
+  const list = document.getElementById('chapterList');
+  list.innerHTML='';
+  book.chapters.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='chapter'+(c.id===book.current?' active':'');
+    d.innerHTML=`${c.title} <span onclick="deleteChapter(${c.id})">✖</span>`;
+    d.onclick=()=>load(c.id);
+    list.appendChild(d);
+  });
+}
+
+function load(id){
+  const c = book.chapters.find(x=>x.id===id);
+  if(!c) return;
+  book.current=id;
+  quill.root.innerHTML=c.content;
+  render();
+}
+
+quill.on('text-change', ()=>{
+  const c = book.chapters.find(x=>x.id===book.current);
+  if(!c) return;
+  c.content = quill.root.innerHTML;
+  save();
+});
+
+render();
+if(book.current) load(book.current);
+</script>
+
+</body>
+</html>
